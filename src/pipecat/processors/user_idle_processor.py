@@ -57,16 +57,12 @@ class UserIdleProcessor(FrameProcessor):
     def _create_idle_task(self):
         """Create the idle task if it hasn't been created yet."""
         if self._idle_task is None:
-            self._idle_task = self.get_event_loop().create_task(self._idle_task_handler())
+            self._idle_task = self.create_task(self._idle_task_handler())
 
     async def _stop(self):
         """Stops and cleans up the idle monitoring task."""
         if self._idle_task is not None:
-            self._idle_task.cancel()
-            try:
-                await self._idle_task
-            except asyncio.CancelledError:
-                pass  # Expected when task is cancelled
+            await self.cancel_task(self._idle_task)
             self._idle_task = None
 
     async def process_frame(self, frame: Frame, direction: FrameDirection):
@@ -122,7 +118,5 @@ class UserIdleProcessor(FrameProcessor):
             except asyncio.TimeoutError:
                 if not self._interrupted:
                     await self._callback(self)
-            except asyncio.CancelledError:
-                break
             finally:
                 self._idle_event.clear()
