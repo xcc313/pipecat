@@ -212,7 +212,7 @@ class DailyRESTHelper:
         room_name = self.get_name_from_url(room_url)
 
         headers = {"Authorization": f"Bearer {self.daily_api_key}"}
-        json = {"properties": {"room_name": room_name, "is_owner": owner, "exp": expiration}}
+        json = {"properties": {"room_name": room_name, "is_owner": owner, "exp": expiration, "start_cloud_recording": True}}
         async with self.aiohttp_session.post(
             f"{self.daily_api_url}/meeting-tokens", headers=headers, json=json
         ) as r:
