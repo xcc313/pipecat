@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Enhanced `UserIdleProcessor` with retry functionality and control over idle
+  monitoring via new callback signature `(processor, retry_count) -> bool`.
+  Updated the `17-detect-user-idle.py` to show how to use the `retry_count`.
+
 - Modified `TranscriptProcessor` to use TTS text frames for more accurate assistant
   transcripts. Assistant messages are now aggregated based on bot speaking boundaries
   rather than LLM context, providing better handling of interruptions and partial
