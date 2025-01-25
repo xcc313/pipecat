@@ -104,6 +104,7 @@ class UserIdleProcessor(FrameProcessor):
 
     async def cleanup(self):
         """Cleans up resources when processor is shutting down."""
+        await super().cleanup()
         if self._idle_task:  # Only stop if task exists
             await self._stop()
 
