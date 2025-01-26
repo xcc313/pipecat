@@ -25,6 +25,16 @@ from pipecat.transports.network.websocket_server import (
     WebsocketServerTransport,
 )
 
+from pipecat.processors.frameworks.rtvi import (
+    RTVIProcessor,
+    RTVIConfig, RTVIServiceConfig,RTVIServiceOptionConfig,
+    RTVISpeakingProcessor,
+    RTVIUserTranscriptionProcessor,
+    RTVIBotTranscriptionProcessor,
+    RTVIBotLLMProcessor,
+    RTVIBotTTSProcessor
+)
+
 load_dotenv(override=True)
 
 logger.remove(0)
@@ -109,12 +119,37 @@ async def main():
     context = OpenAILLMContext(messages)
     context_aggregator = OpenAILLMService.create_context_aggregator(context)
 
+    initial_config = RTVIConfig(
+    config=[
+        RTVIServiceConfig(
+            service="voice",
+            options=[
+                RTVIServiceOptionConfig(
+                    name="voice_id",
+                    value="default"
+                )
+            ]
+        )
+    ]
+)
+
+    # Initialize processor
+    rtvi = RTVIProcessor(config=initial_config)
+
+    # Create processors
+    rtvi_speaking = RTVISpeakingProcessor() # Speaking state changes
+    rtvi_user_transcription = RTVIUserTranscriptionProcessor() # User speech transcription
+    rtvi_bot_transcription = RTVIBotTranscriptionProcessor() # Bot speech transcription
+
     pipeline = Pipeline(
         [
             transport.input(),  # Websocket input from client
+            rtvi_speaking,
             stt,  # Speech-To-Text
+            rtvi_user_transcription,  # User transcription
             context_aggregator.user(),
             llm,  # LLM
+            rtvi_bot_transcription,   # Bot transcription
             tts,  # Text-To-Speech
             transport.output(),  # Websocket output to client
             context_aggregator.assistant(),
@@ -123,10 +158,14 @@ async def main():
 
     task = PipelineTask(pipeline, params=PipelineParams(allow_interruptions=True))
 
+    @rtvi.event_handler("on_client_ready")
+    async def on_client_ready(rtvi):
+        await rtvi.set_bot_ready()
+
     @transport.event_handler("on_client_connected")
     async def on_client_connected(transport, client):
         # Kick off the conversation.
-        # messages.append({"role": "system", "content": "Please introduce yourself to the user."})
+        # messages.append({"role": "system", "content": "Please introduce yourself to the user concise in Chinese ."})
         await task.queue_frames([context_aggregator.user().get_context_frame()])
 
 

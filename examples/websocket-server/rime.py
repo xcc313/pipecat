@@ -61,7 +61,8 @@ class RimeTTSService(TTSService):
                         await self.stop_ttfb_metrics()
 
                         chunk_size = 8192  # Use a fixed buffer size
-                        async for chunk in response.content.iter_any():
+                        # async for chunk in response.content.iter_any():
+                        async for chunk in response.content.iter_chunked(chunk_size):
                             if chunk:
                                 frame = TTSAudioRawFrame(
                                     audio=chunk,
