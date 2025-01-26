@@ -10,15 +10,15 @@ import sys
 
 from dotenv import load_dotenv
 from loguru import logger
-
+from rime import RimeTTSService
 from pipecat.audio.vad.silero import SileroVADAnalyzer
 from pipecat.frames.frames import BotInterruptionFrame, EndFrame
 from pipecat.pipeline.pipeline import Pipeline
 from pipecat.pipeline.runner import PipelineRunner
 from pipecat.pipeline.task import PipelineParams, PipelineTask
 from pipecat.processors.aggregators.openai_llm_context import OpenAILLMContext
-from pipecat.services.cartesia import CartesiaTTSService
-from pipecat.services.deepgram import DeepgramSTTService
+from pipecat.services.whisper import WhisperSTTService, Model
+from pipecat.services.ollama import OLLamaLLMService
 from pipecat.services.openai import OpenAILLMService
 from pipecat.transports.network.websocket_server import (
     WebsocketServerParams,
@@ -79,8 +79,9 @@ class SessionTimeoutHandler:
 
 async def main():
     transport = WebsocketServerTransport(
+        host='0.0.0.0', 
         params=WebsocketServerParams(
-            audio_out_sample_rate=16000,
+            audio_out_sample_rate=22050,
             audio_out_enabled=True,
             add_wav_header=True,
             vad_enabled=True,
@@ -90,25 +91,23 @@ async def main():
         )
     )
 
-    llm = OpenAILLMService(api_key=os.getenv("OPENAI_API_KEY"), model="gpt-4o")
+    llm = OLLamaLLMService(base_url="http://192.168.50.81:11434/v1", model="qwen2.5:14b")
 
-    stt = DeepgramSTTService(api_key=os.getenv("DEEPGRAM_API_KEY"))
-
-    tts = CartesiaTTSService(
-        api_key=os.getenv("CARTESIA_API_KEY"),
-        voice_id="79a125e8-cd45-4c13-8a67-188112f4dd22",  # British Lady
-        sample_rate=16000,
+    stt = WhisperSTTService(
+        model=Model.LARGE,
+        device="cuda",
+        no_speech_prob=0.4
     )
-
+    tts = RimeTTSService(sample_rate=22050)
     messages = [
         {
             "role": "system",
-            "content": "You are a helpful LLM in a WebRTC call. Your goal is to demonstrate your capabilities in a succinct way. Your output will be converted to audio so don't include special characters in your answers. Respond to what the user said in a creative and helpful way.",
+            "content": "You are a helpful LLM in a voice call. Your goal is to demonstrate your capabilities in a succinct way. Your output will be converted to audio so don't include special characters in your answers.",
         },
     ]
 
     context = OpenAILLMContext(messages)
-    context_aggregator = llm.create_context_aggregator(context)
+    context_aggregator = OpenAILLMService.create_context_aggregator(context)
 
     pipeline = Pipeline(
         [
@@ -127,16 +126,9 @@ async def main():
     @transport.event_handler("on_client_connected")
     async def on_client_connected(transport, client):
         # Kick off the conversation.
-        messages.append({"role": "system", "content": "Please introduce yourself to the user."})
+        # messages.append({"role": "system", "content": "Please introduce yourself to the user."})
         await task.queue_frames([context_aggregator.user().get_context_frame()])
 
-    @transport.event_handler("on_session_timeout")
-    async def on_session_timeout(transport, client):
-        logger.info(f"Entering in timeout for {client.remote_address}")
-
-        timeout_handler = SessionTimeoutHandler(task, tts)
-
-        await timeout_handler.handle_timeout(client)
 
     runner = PipelineRunner()
 

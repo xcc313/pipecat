@@ -4,7 +4,7 @@
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script src="https://cdn.jsdelivr.net/npm/protobufjs@7.X.X/dist/protobuf.min.js"></script>
+    <script src="protobuf.min.js"></script>
     <title>Pipecat WebSocket Client Example</title>
   </head>
 
@@ -14,7 +14,7 @@
     <button id="startAudioBtn">Start Audio</button>
     <button id="stopAudioBtn">Stop Audio</button>
     <script>
-      const SAMPLE_RATE = 16000;
+      const SAMPLE_RATE = 22050;
       const NUM_CHANNELS = 1;
       const PLAY_TIME_RESET_THRESHOLD_MS = 1.0;
 
@@ -62,7 +62,7 @@
       });
 
       function initWebSocket() {
-          ws = new WebSocket('ws://localhost:8765');
+          ws = new WebSocket('ws://192.168.50.81:8765');
           // This is so `event.data` is already an ArrayBuffer.
           ws.binaryType = 'arraybuffer';
 
